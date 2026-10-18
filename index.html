@@ -1,0 +1,243 @@
+
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#173b32">
+  <title>Madrid Audio Guide AI</title>
+  <style>
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: Arial, sans-serif;
+      background: #f5f5ef;
+      color: #20372d;
+    }
+    header {
+      background: #173b32;
+      color: white;
+      padding: 32px 20px;
+      text-align: center;
+    }
+    header h1 { margin: 0 0 10px; }
+    main {
+      max-width: 700px;
+      margin: 24px auto;
+      padding: 0 16px;
+    }
+    section {
+      background: white;
+      padding: 22px;
+      border-radius: 16px;
+      margin-bottom: 18px;
+    }
+    button, select {
+      padding: 12px;
+      border-radius: 9px;
+      font-size: 16px;
+    }
+    button {
+      background: #205847;
+      color: white;
+      border: 0;
+      cursor: pointer;
+    }
+    select { max-width: 100%; }
+    .place {
+      padding: 12px 0;
+      border-bottom: 1px solid #ddd;
+    }
+    #status { line-height: 1.5; }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>🎧 Madrid Audio Guide AI</h1>
+    <p>Descubre Madrid a tu ritmo</p>
+  </header>
+
+  <main>
+    <section>
+      <h2>Tu guía personal</h2>
+      <p>Activa el GPS para recibir avisos cerca de monumentos.
+      Tú decides cuándo escuchar cada historia.</p>
+      <button id="gps">📍 Activar GPS</button>
+      <p id="status">GPS desactivado.</p>
+    </section>
+
+    <section>
+      <h2>🌍 Elige tu idioma</h2>
+      <select id="language">
+        <option value="es-ES">🇪🇸 Español</option>
+        <option value="en-GB">🇬🇧 English</option>
+        <option value="fr-FR">🇫🇷 Français</option>
+        <option value="de-DE">🇩🇪 Deutsch</option>
+        <option value="it-IT">🇮🇹 Italiano</option>
+        <option value="pt-PT">🇵🇹 Português</option>
+      </select>
+    </section>
+
+    <section>
+      <h2>🏛️ Monumentos de Madrid</h2>
+      <div id="places"></div>
+    </section>
+  </main>
+
+  <script>
+    const places = [
+      {
+        name: "Palacio Real",
+        lat: 40.4179, lng: -3.7143,
+        text: "Estás ante el Palacio Real de Madrid, una de las residencias reales más grandes de Europa occidental. Su construcción actual comenzó en el siglo dieciocho."
+      },
+      {
+        name: "Plaza Mayor",
+        lat: 40.4155, lng: -3.7074,
+        text: "Bienvenido a la Plaza Mayor, uno de los espacios históricos más conocidos de Madrid, escenario de mercados, celebraciones y acontecimientos públicos."
+      },
+      {
+        name: "Puerta del Sol",
+        lat: 40.4169, lng: -3.7035,
+        text: "Estás en la Puerta del Sol, un lugar emblemático de Madrid donde se encuentra el kilómetro cero de las carreteras radiales españolas."
+      },
+      {
+        name: "Catedral de la Almudena",
+        lat: 40.4156, lng: -3.7118,
+        text: "Esta es la Catedral de la Almudena, situada junto al Palacio Real. Su construcción se prolongó durante más de un siglo."
+      },
+      {
+        name: "Gran Vía",
+        lat: 40.4200, lng: -3.7040,
+        text: "Estás en Gran Vía, una de las avenidas más conocidas de Madrid por sus edificios, teatros, tiendas y ambiente urbano."
+      }
+    ];
+
+    const translations = {
+      "en-GB": [
+        "You are at the Royal Palace of Madrid, a major royal landmark.",
+        "Welcome to Plaza Mayor, one of Madrid's best-known historic squares.",
+        "You are at Puerta del Sol, home to Spain's famous kilometre zero.",
+        "This is Almudena Cathedral, next to the Royal Palace.",
+        "You are on Gran Vía, famous for its architecture, theatres and shops."
+      ],
+      "fr-FR": [
+        "Vous êtes devant le Palais royal de Madrid, un monument emblématique.",
+        "Bienvenue sur la Plaza Mayor, une place historique de Madrid.",
+        "Vous êtes à la Puerta del Sol, où se trouve le kilomètre zéro.",
+        "Voici la cathédrale de l'Almudena, près du Palais royal.",
+        "Vous êtes sur la Gran Vía, célèbre pour ses théâtres et ses boutiques."
+      ],
+      "de-DE": [
+        "Sie stehen vor dem Königspalast von Madrid, einem bedeutenden Wahrzeichen.",
+        "Willkommen auf der Plaza Mayor, einem historischen Platz Madrids.",
+        "Sie sind an der Puerta del Sol, wo sich Spaniens Kilometer null befindet.",
+        "Dies ist die Almudena-Kathedrale neben dem Königspalast.",
+        "Sie befinden sich auf der Gran Vía, bekannt für Architektur und Theater."
+      ],
+      "it-IT": [
+        "Ti trovi davanti al Palazzo Reale di Madrid, un monumento importante.",
+        "Benvenuto in Plaza Mayor, una delle piazze storiche di Madrid.",
+        "Sei alla Puerta del Sol, dove si trova il chilometro zero.",
+        "Questa è la Cattedrale dell'Almudena, accanto al Palazzo Reale.",
+        "Ti trovi sulla Gran Vía, famosa per l'architettura e i teatri."
+      ],
+      "pt-PT": [
+        "Está diante do Palácio Real de Madrid, um monumento emblemático.",
+        "Bem-vindo à Plaza Mayor, uma praça histórica de Madrid.",
+        "Está na Puerta del Sol, onde fica o quilómetro zero de Espanha.",
+        "Esta é a Catedral da Almudena, junto ao Palácio Real.",
+        "Está na Gran Vía, conhecida pela arquitetura, teatros e lojas."
+      ]
+    };
+
+    const container = document.getElementById("places");
+    const status = document.getElementById("status");
+    const language = document.getElementById("language");
+    const alerted = new Set();
+    let watch = null;
+
+    function speak(place, index) {
+      speechSynthesis.cancel();
+      const lang = language.value;
+      const text = lang === "es-ES"
+        ? place.text
+        : translations[lang][index];
+
+      const utterance = new SpeechSynthesisUtterance(text);
+      utterance.lang = lang;
+      speechSynthesis.speak(utterance);
+    }
+
+    places.forEach((place, index) => {
+      const row = document.createElement("div");
+      row.className = "place";
+
+      const title = document.createElement("h3");
+      title.textContent = place.name;
+
+      const button = document.createElement("button");
+      button.textContent = "▶ Escuchar historia";
+      button.addEventListener("click", () => speak(place, index));
+
+      row.append(title, button);
+      container.appendChild(row);
+    });
+
+    function distance(a, b) {
+      const rad = n => n * Math.PI / 180;
+      const dLat = rad(b.lat - a.lat);
+      const dLng = rad(b.lng - a.lng);
+      const x = Math.sin(dLat / 2) ** 2 +
+        Math.cos(rad(a.lat)) * Math.cos(rad(b.lat)) *
+        Math.sin(dLng / 2) ** 2;
+      return 6371000 * 2 * Math.atan2(Math.sqrt(x), Math.sqrt(1 - x));
+    }
+
+    document.getElementById("gps").addEventListener("click", () => {
+      if (watch !== null) {
+        navigator.geolocation.clearWatch(watch);
+        watch = null;
+        status.textContent = "Seguimiento GPS detenido.";
+        document.getElementById("gps").textContent = "📍 Activar GPS";
+        return;
+      }
+
+      if (!navigator.geolocation) {
+        status.textContent = "Tu navegador no admite GPS.";
+        return;
+      }
+
+      watch = navigator.geolocation.watchPosition(position => {
+        const current = {
+          lat: position.coords.latitude,
+          lng: position.coords.longitude
+        };
+
+        status.textContent = "GPS activo. Ubicación actualizada.";
+
+        places.forEach((place, index) => {
+          const d = distance(current, place);
+          if (d < 100 && !alerted.has(place.name)) {
+            alerted.add(place.name);
+            status.textContent =
+              "Estás cerca de " + place.name +
+              ". Puedes escuchar su historia en la lista.";
+          }
+          if (d > 160) alerted.delete(place.name);
+        });
+      }, error => {
+        status.textContent = error.code === 1
+          ? "Permite el acceso a la ubicación en tu navegador."
+          : "No se pudo obtener tu ubicación. Comprueba el GPS.";
+      }, {
+        enableHighAccuracy: true,
+        maximumAge: 5000,
+        timeout: 15000
+      });
+
+      document.getElementById("gps").textContent = "■ Detener GPS";
+    });
+  </script>
+</body>
+</html>
